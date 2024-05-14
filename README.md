@@ -1,7 +1,7 @@
 # ASMR Test Server
 Code for testing ASMR service by using Rest API
 
-## 실햄법
+## 실행법
 
 ### 로컬 환경에서 실행 시 
 - python3 설치 
