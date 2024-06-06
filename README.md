@@ -1,13 +1,12 @@
 # ASMR Test Server
 Code for testing ASMR service by using Rest API
 
-## 실행법
-
 ### 로컬 환경에서 실행 시 
 - python3 설치 
 - flask/app.py의 필요한 패키지 설치
 
 ### 가상환경에서 실행 시
+/flask로 cd후 
 ```bash
 $ pip install pipenv
 ```
@@ -22,9 +21,4 @@ $ pipenv install
 
 ### 실행 환경
 - vscode의 live server extension 
-
-### 사전 학습 모델 파일
-classifier_tmp.pth파일 용량 너무 커서(300MB) 업로드 불가
-- 다운로드 링크: https://drive.google.com/file/d/1V9Xpcqj0gfM1rRyjcvLZLLfTih2krc0X/view?usp=drive_link
-- 파일 경로: flask/classifer_tmp.pth
 
