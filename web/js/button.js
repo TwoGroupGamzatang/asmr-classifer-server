@@ -12,10 +12,10 @@ $(document).ready(function () {
         console.log("Sending text to server:", text);  // 요청 전송 전 로그 추가
 
         $.ajax({
-            url: 'http://localhost:5000/predict',
+            url: 'http://localhost:5000/classify_with_universal_classifier',
             type: 'POST',
             contentType: 'application/json',
-            data: JSON.stringify({ text: text }),
+            data: JSON.stringify({ summarized_text: text }),
             success: function (response) {
                 console.log("Received response from server:", response);  // 응답 로그 추가
                 $('#answer').text(response.predicted_class);
