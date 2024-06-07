@@ -5,17 +5,37 @@ import torch.nn.functional as F
 from transformers import BertTokenizer
 from torch.utils.data import Dataset, DataLoader
 import pandas as pd
+import os
+from datetime import datetime
 from model import ArticleClassifier
 from ArticleDataset import ArticleDataset
 from sklearn.model_selection import train_test_split
 from torch.optim import Adam
+from utils import *
 from torch.nn import CrossEntropyLoss
 
-def load_training_data(user_preferences):
+def encode_personal_label(tag, label_mapping):
+    return label_mapping.get(tag, -1)  # 없는 태그는 -1로 인코딩
+
+def load_training_data(userID):
+    # TODO
+    # DB에서 preference 해당하는 train_data 가져오기 구현 필요
+    user_preferences,label_mapping = get_user_preferences(userID)
+    article_df = pd.read_excel('sum_article_extend.xlsx')
+    personal_article_df  = pd.DataFrame()
+    personal_article_df = article_df[article_df['tag'].isin(user_preferences)]
+
+    personal_article_df['tags_encoded'] = personal_article_df['tag'].apply(lambda x: encode_personal_label(x, label_mapping))
+    summarized_text = personal_article_df['summarized']
+    labels = personal_article_df['tags_encoded']
+    print(personal_article_df['tags_encoded'].value_counts())
+
+    return summarized_text, labels
+
+def update_personal_training_data(user_preferences):
     # TODO
     # DB에서 preference 해당하는 train_data 가져오기 구현 필요
     user_preferences = user_preferences # 리스트 형태라 가정
-
 
     article_df = pd.read_excel('sum_article_extend.xlsx')
     personal_article_df  = pd.DataFrame()
@@ -24,14 +44,18 @@ def load_training_data(user_preferences):
         filtered_articles= article_df[article_df['tag'].str.contains(preference,case=False,na=False)]
         personal_article_df = pd.concat([personal_article_df, filtered_articles])
 
-    return personal_article_df
+    return personal_article_df    
 
-def train_save_personal_classifier(train_data,tokenizer, user_preferences,userID):
+def train_save_personal_classifier(summarized_text,labels,tokenizer, user_preferences,userID):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model_save_path = f'{userID}.pth'
-    personal_article_df = train_data
-    summarized_text = personal_article_df['summarized']
-    labels = personal_article_df['tags_encoded']
+
+    if os.path.exists(model_save_path):
+        current_time = datetime.now().strftime("%Y%m%d_%H%M%S")
+        backup_path = f'{userID}_{current_time}.pth'
+        os.rename(model_save_path, backup_path)
+
+
     train_data, val_data, train_labels, val_labels = train_test_split(summarized_text,labels, test_size=0.2, random_state=42)
 
     train_dataset = ArticleDataset(train_data, tokenizer, train_labels)
@@ -74,6 +98,8 @@ def train_save_personal_classifier(train_data,tokenizer, user_preferences,userID
                 attention_mask = attention_mask.to(device)
                 targets = targets.to(device, dtype=torch.long)
                 outputs = model(input_ids, attention_mask)
+                print(f"Targets: {targets}")
+                print(f"Number of classes: {outputs.size(1)}")
                 loss = F.cross_entropy(outputs, targets)
                 val_loss += loss.item()
                 predicted_classes = torch.argmax(F.softmax(outputs, dim=1), dim=1)
@@ -95,3 +121,4 @@ def train_save_personal_classifier(train_data,tokenizer, user_preferences,userID
                 break
     torch.save(model.state_dict(),model_save_path)
     return model
+
