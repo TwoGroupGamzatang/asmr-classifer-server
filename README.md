@@ -21,7 +21,7 @@ $ pipenv install
 ```
 
 ### 실행 환경
-- vscode의 live server extension 
+- vscode
 
 universal_classfier 모델 다운로드 필요( 용량 너무 커서 깃헙에서 다운 불가)
 아래 링크에서 다운로드 후 flask 폴더 내에 위치시키기
