@@ -16,7 +16,8 @@ Pillow = "*"
 opencv-python-headless = "*"
 numpy = "*"
 scikit-learn = "*"
-
+pymongo = "*"
+openpyxl = "*"
 
 [requires]
 python_version = "3.9"
