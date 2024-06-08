@@ -1,14 +1,20 @@
-from pymongo import MongoClient
+from pymongo import MongoClient, errors
 
 def insert_user_preferences(userId, preferences):
     url = "mongodb+srv://inwoo920621:pasly0920@asmr.nxdtmlt.mongodb.net/scraper?retryWrites=true&w=majority"
     """
-    :param user_id: 사용자 ID (문자열)
+    :param userId: 사용자 ID (문자열)
     :param preferences: 사용자 선호도 (문자열 리스트)
     """
     client = MongoClient(url)
     db = client.scraper
     collection = db.preference
+
+    # 중복 검사: 이미 해당 userId가 존재하는지 확인
+    existing_user = collection.find_one({"userId": userId})
+    if existing_user:
+        print(f"User with userId {userId} already exists.")
+        return {"message": "오류. 이미 해당 user가 존재합니다.", "status": "duplicate"}
 
     label_mapping = {pref: idx for idx, pref in enumerate(preferences)}
     document = {
@@ -16,6 +22,14 @@ def insert_user_preferences(userId, preferences):
         "preferences": preferences,
         "preferencesMapping": label_mapping
     }
+
+    try:
+        collection.insert_one(document)
+        print(f"User preferences for {userId} inserted successfully.")
+        return {"message": "관심사 생성완료", "status": "success"}
+    except errors.PyMongoError as e:
+        print(f"Error inserting user preferences: {e}")
+        return {"message": "관심사 생성 실패", "status": "error"}
 
     collection.insert_one(document)
 
