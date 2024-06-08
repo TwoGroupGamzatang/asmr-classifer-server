@@ -14,7 +14,7 @@ def insert_user_preferences(userId, preferences):
     document = {
         "userId": userId,
         "preferences": preferences,
-        "preferences_mapping": label_mapping
+        "preferencesMapping": label_mapping
     }
 
     collection.insert_one(document)
@@ -36,7 +36,7 @@ def update_user_preferences(userId, new_preferences):
     new_values = {
         "$set": {
             "preferences": new_preferences,
-            "preferences_mapping": new_label_mapping
+            "preferencesMapping": new_label_mapping
         }
     }
     # 문서 업데이트
@@ -45,7 +45,7 @@ def update_user_preferences(userId, new_preferences):
     if result.matched_count > 0:
         print("관심사 업데이트.")
     else:
-        print("error. cannot find userID")
+        print("error. cannot find userId")
 
 def get_user_preferences(userId):
     url = "mongodb+srv://inwoo920621:pasly0920@asmr.nxdtmlt.mongodb.net/scraper?retryWrites=true&w=majority"
@@ -59,12 +59,12 @@ def get_user_preferences(userId):
     collection = db.preference
 
     # 사용자 ID로 문서 찾기
-    query = {"userID": userId}
+    query = {"userId": userId}
     document = collection.find_one(query)
 
     if document:
         user_preferences = document.get("preferences", None)
-        label_mapping = document.get("preferences_mapping", None)
+        label_mapping = document.get("preferencesMapping", None)
         return user_preferences, label_mapping
     else:
         print("해당 사용자 ID를 가진 문서를 찾을 수 없습니다.")
