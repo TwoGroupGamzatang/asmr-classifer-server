@@ -1,6 +1,6 @@
 from pymongo import MongoClient
 
-def insert_user_preferences(user_id, preferences):
+def insert_user_preferences(userId, preferences):
     url = "mongodb+srv://inwoo920621:pasly0920@asmr.nxdtmlt.mongodb.net/scraper?retryWrites=true&w=majority"
     """
     :param user_id: 사용자 ID (문자열)
@@ -12,14 +12,14 @@ def insert_user_preferences(user_id, preferences):
 
     label_mapping = {pref: idx for idx, pref in enumerate(preferences)}
     document = {
-        "userID": user_id,
-        "user_preferences": preferences,
-        "user_preferences_mapping": label_mapping
+        "userId": userId,
+        "preferences": preferences,
+        "preferences_mapping": label_mapping
     }
 
     collection.insert_one(document)
 
-def update_user_preferences(user_id, new_preferences):
+def update_user_preferences(userId, new_preferences):
     url = "mongodb+srv://inwoo920621:pasly0920@asmr.nxdtmlt.mongodb.net/scraper?retryWrites=true&w=majority"
     """
     :param user_id: 사용자 ID (문자열)
@@ -32,11 +32,11 @@ def update_user_preferences(user_id, new_preferences):
     new_label_mapping = {pref: idx for idx, pref in enumerate(new_preferences)}
 
     # 업데이트할 문서와 업데이트 내용 설정
-    query = {"userID": user_id}
+    query = {"userID": userId}
     new_values = {
         "$set": {
-            "user_preferences": new_preferences,
-            "user_preferences_mapping": new_label_mapping
+            "preferences": new_preferences,
+            "preferences_mapping": new_label_mapping
         }
     }
     # 문서 업데이트
@@ -47,7 +47,7 @@ def update_user_preferences(user_id, new_preferences):
     else:
         print("error. cannot find userID")
 
-def get_user_preferences(user_id):
+def get_user_preferences(userId):
     url = "mongodb+srv://inwoo920621:pasly0920@asmr.nxdtmlt.mongodb.net/scraper?retryWrites=true&w=majority"
     """
     :param user_id: 사용자 ID (문자열)
@@ -59,12 +59,12 @@ def get_user_preferences(user_id):
     collection = db.preference
 
     # 사용자 ID로 문서 찾기
-    query = {"userID": user_id}
+    query = {"userID": userId}
     document = collection.find_one(query)
 
     if document:
-        user_preferences = document.get("user_preferences", None)
-        label_mapping = document.get("user_preferences_mapping", None)
+        user_preferences = document.get("preferences", None)
+        label_mapping = document.get("preferences_mapping", None)
         return user_preferences, label_mapping
     else:
         print("해당 사용자 ID를 가진 문서를 찾을 수 없습니다.")
