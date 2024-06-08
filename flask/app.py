@@ -91,7 +91,7 @@ def create_personal_classifier_endpoint():
     data = request.get_json()
     userID = data['userId']
     print(userID)
-    user_preferences = data['user_preferences']
+    user_preferences = data['preferences']
     print(user_preferences)
     insert_user_preferences(userID,user_preferences)
     create_personal_classifier(userID, user_preferences)
