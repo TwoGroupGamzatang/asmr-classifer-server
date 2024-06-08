@@ -89,7 +89,7 @@ def get_personal_classifier(userID):
 @app.route('/create_personal_classifier', methods=['POST'])
 def create_personal_classifier_endpoint():
     data = request.get_json()
-    userID = data['userID']
+    userID = data['userId']
     print(userID)
     user_preferences = data['user_preferences']
     print(user_preferences)
@@ -103,7 +103,7 @@ def predict_with_personal_classifier_endpoint():
     data = request.get_json()
     # TODO
     # 개인별 상태 관리
-    userID = data['userID']
+    userID = data['userId']
     text = data['summarized_text']
     #personal_label_mapping = {0: 3, 1: 5, 2: 8}
     #inverse_personal_label_mapping = {v: k for k, v in personal_label_mapping.items()}
@@ -160,9 +160,9 @@ def predict_with_universal_classifier_endpoint():
 @app.route('/update_personal_classifier', methods=['POST'])
 def update_personal_classfier_endpoint():
     data = request.get_json()
-    userID = data['userID']
+    userID = data['userId']
     summarized_text = data['summarized_text']
-    label = data['user_update_label']
+    label = data['update_label']
     
 
     user_preference,label_mapping = get_user_preferences(userID)
@@ -185,7 +185,7 @@ def update_personal_classfier_endpoint():
 def update_user_preferences_endpoint():
     data = request.get_json()
     userID = data['userID']
-    user_preferences = data['user_preferences']
+    user_preferences = data['preferences']
     update_user_preferences(userID, user_preferences)
     return jsonify({'message': '관심사 업데이트 됨. DB를 확인해주세요'})
 
