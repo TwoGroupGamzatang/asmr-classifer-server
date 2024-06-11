@@ -25,4 +25,4 @@ $ pipenv install
 
 universal_classfier 모델 다운로드 필요( 용량 너무 커서 깃헙에서 다운 불가)
 아래 링크에서 다운로드 후 flask 폴더 내에 위치시키기
-https://drive.google.com/file/d/1BCWJ0TPpQFnI2q2u0xSn2-tg_x_K2dRi/view?usp=drive_link
+[https://drive.google.com/file/d/1BCWJ0TPpQFnI2q2u0xSn2-tg_x_K2dRi/view?usp=drive_link](https://drive.google.com/file/d/1ERAoDHG2xvfHWXmG9cz-O7WQ04AUynsm/view?usp=sharing)
