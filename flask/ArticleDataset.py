@@ -1,4 +1,4 @@
-from torch.utils.data import Dataset
+from torch.utils.data import DataLoader, Dataset
 
 class ArticleDataset(Dataset):
     def __init__(self, texts, tokenizer, labels):
@@ -13,7 +13,6 @@ class ArticleDataset(Dataset):
         text = self.texts[idx]
         target = self.targets[idx]
 
-        # Tokenize the text
         encoding = self.tokenizer.encode_plus(
             text,
             add_special_tokens=True,
@@ -27,4 +26,8 @@ class ArticleDataset(Dataset):
         input_ids = encoding['input_ids'].flatten()
         attention_mask = encoding['attention_mask'].flatten()
 
-        return input_ids, attention_mask, target
+        return {
+            'input_ids': input_ids,
+            'attention_mask': attention_mask,
+            'labels': target.clone().detach().float()
+        }
