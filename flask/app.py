@@ -4,24 +4,23 @@ import torch
 import torch.nn.functional as F
 from transformers import BertTokenizer
 from torch.utils.data import Dataset, DataLoader
+import os
 import pandas as pd
 from utils import insert_user_preferences, update_user_preferences
 from model import ArticleClassifier
 from ArticleDataset import ArticleDataset
 from predict import predict_with_classifier
-from train import train_save_personal_classifier, load_training_data
+from train import train_save_personal_classifier, load_training_data, load_personal_training_data
 from utils import *
 from sklearn.model_selection import train_test_split
 from torch.optim import Adam
 from torch.nn import CrossEntropyLoss
+from datetime import datetime
 
 app = Flask(__name__)
 CORS(app)
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
-# Excel 파일 경로 설정
-excel_file_path = 'sum_article_extend.xlsx'
 
 # 라벨 인코더 로드 및 태그 매핑 생성
 univ_label_mapping = {
@@ -47,7 +46,7 @@ univ_inverse_label_mapping = {v: k for k, v in univ_label_mapping.items()}
 
 # 모델 초기화 및 로드
 num_classes = 16
-model_save_path = 'univ_classifier_20240529_125400.pth'
+model_save_path = 'univ_classifier_20240612_081304.pth'
 universal_classify_model = ArticleClassifier(num_classes=num_classes)
 universal_classify_model.load_state_dict(torch.load(model_save_path, map_location=torch.device('cpu')))
 universal_classify_model.eval()
@@ -65,12 +64,19 @@ def encode_personal_label(tag, label_mapping):
     return label_mapping.get(tag, -1)  # 없는 태그는 -1로 인코딩   
 
 # 사용자의 관심 분야에 따라 개인 분류기를 구성하는 함수
-def create_personal_classifier(userID,user_preferences):
+def create_personal_classifier(userID, user_preferences):
     summarized_text, labels = load_training_data(userID)
-    model = train_save_personal_classifier(summarized_text, labels,tokenizer, user_preferences, userID)
-    # TODO
-    # training_data를 사용하여 개인 분류기를 학습 코드 작성
-    return 
+    train_save_personal_classifier(summarized_text, labels, tokenizer, user_preferences, userID)
+
+    data_save_path = os.path.join("user_data", f'{userID}.json')
+    personal_article_df = pd.DataFrame({
+        'summarized_text': summarized_text,
+        'labels': labels
+    })
+    personal_article_df.to_json(data_save_path, orient='records', lines=True)
+
+    return
+
 
 # personal_classifier 가져오기
 def get_personal_classifier(userID):
@@ -107,26 +113,20 @@ def predict_with_personal_classifier_endpoint():
     text = data['summarized_text']
     #personal_label_mapping = {0: 3, 1: 5, 2: 8}
     #inverse_personal_label_mapping = {v: k for k, v in personal_label_mapping.items()}
-
-    personal_classifiy_model = get_personal_classifier(userID,num_classes=3)
-    predicted_class, top_classes, top_probs = predict_with_classifier(text,personal_classifiy_model,tokenizer)
+    personal_classifiy_model = get_personal_classifier(userID)
+    predicted_class_wth_probs = predict_with_classifier(text, personal_classifiy_model, tokenizer)
+    print(predicted_class_wth_probs)
 
     # 확률 차이를 계산하여 컷하는 로직 추가
-    possible_classes = [top_classes[0]]  # 첫 번째 클래스
+    possible_classes_all = [cls for cls, prob in predicted_class_wth_probs.items() if prob > 0.55][:5]
+    predicted_class = possible_classes_all[0] if possible_classes_all else "기타"
+    possible_classes = possible_classes_all[1:]
     
-    # 두 번째 항목부터 반복하면서 차이를 계산
-    for i in range(1, len(top_probs)):
-        if (top_probs[i-1] - top_probs[i]) < 0.2:
-            possible_classes.append(top_classes[i])
-        else:
-            break  # 차이가 20% 이상이면 종료
-
-    predicted_class = univ_decode_label(predicted_class)
-    top_tags = [univ_inverse_label_mapping[class_idx] for class_idx in top_classes]
-    possible_tags = [univ_inverse_label_mapping[class_idx] for class_idx in possible_classes]
+    
+    
     return jsonify({
         'predicted_class': predicted_class,
-        'possible_classes': possible_tags
+        'possible_classes': possible_classes
     })
 
 # 범용 분류기 예측 엔드포인트
@@ -134,61 +134,84 @@ def predict_with_personal_classifier_endpoint():
 def predict_with_universal_classifier_endpoint():
     data = request.get_json()
     text = data['summarized_text']
-    predicted_class, top_classes, top_probs = predict_with_classifier(text, universal_classify_model, tokenizer)
+    predicted_class_wth_probs = predict_with_classifier(text, universal_classify_model, tokenizer)
     
     # 확률 차이를 계산하여 컷하는 로직 추가
-    possible_classes = [top_classes[0]]  # 첫 번째 클래스
-    
-    # 두 번째 항목부터 반복하면서 차이를 계산
-    for i in range(1, len(top_probs)):
-        if (top_probs[i-1] - top_probs[i]) < 0.01:
-            possible_classes.append(top_classes[i])
-        else:
-            break  # 차이가 20% 이상이면 종료
-    
-    predicted_class = univ_decode_label(predicted_class)
-    top_tags = [univ_inverse_label_mapping[class_idx] for class_idx in top_classes]
-    possible_tags = [univ_inverse_label_mapping[class_idx] for class_idx in possible_classes]
-    print(possible_tags)
-    
+    possible_classes_all = [cls for cls, prob in predicted_class_wth_probs.items() if prob > 0.60][:5]
+    predicted_class = possible_classes_all[0] if possible_classes_all else "기타"
+    possible_classes = possible_classes_all[1:]  
+
     return jsonify({
         'predicted_class': predicted_class,
-        'possible_classes': possible_tags
+        'possible_classes': possible_classes
     })
 
 # 사용자 classifier 업데이트하는 엔드포인트
 @app.route('/update_personal_classifier', methods=['POST'])
-def update_personal_classfier_endpoint():
+def update_personal_classifier_endpoint():
     data = request.get_json()
     userID = data['userId']
     summarized_text = data['summarized_text']
     label = data['update_label']
     
-
-    user_preference,label_mapping = get_user_preferences(userID)
-    org_summarized_text, org_labels = load_training_data(userID)
+    user_preference, label_mapping = get_user_preferences(userID)
+    org_summarized_text, org_labels = load_personal_training_data(userID)
     
-
     new_summarized_text = pd.Series([summarized_text])
-    new_labels = pd.Series([label])
-    new_labels = new_labels.apply(lambda x: encode_personal_label(x, label_mapping))
+    new_labels = pd.Series([[label]])  # label을 리스트로 감싸서 전달
+    new_labels = new_labels.apply(lambda x: [encode_personal_label(x[0], label_mapping)])  # 내부 값을 인코딩 후 다시 리스트로 감싸기
 
     merged_summarized_text = pd.concat([org_summarized_text, new_summarized_text], ignore_index=True)
     merged_labels = pd.concat([org_labels, new_labels], ignore_index=True)
-    train_save_personal_classifier(merged_summarized_text,merged_labels,tokenizer,user_preference,userID)
 
+    personal_data_path = os.path.join("user_data", f'{userID}.json')
+    personal_article_df = pd.DataFrame({
+        'summarized_text': merged_summarized_text,
+        'labels': merged_labels
+    })
 
-    return jsonify({'message': '개인 분류기 업데이트됨. user123.pth(최신파일), user123.pth_2024XXXX (예전 파일)'})
+    if os.path.exists(personal_data_path):
+        current_time = datetime.now().strftime("%Y%m%d_%H%M%S")
+        backup_path = os.path.join("user_data", f'{userID}_{current_time}.json')
+        os.rename(personal_data_path, backup_path)
+    personal_article_df.to_json(personal_data_path, orient='records', lines=True)
+    
+    # Get the last element of merged_labels
+    last_label = merged_labels.iloc[-1]
+
+    # Print the last label and its type
+    print(f"Last label: {last_label}")
+    print(f"Type of last label: {type(last_label)}")
+    print(merged_labels)
+    print(merged_summarized_text)
+    
+    train_save_personal_classifier(merged_summarized_text, merged_labels, tokenizer, user_preference, userID)
+
+    return jsonify({'message': f'개인 분류기 업데이트됨. user{userID}.pth(최신파일), user{userID}.pth_2024XXXX (예전 파일)'})
 
 # 사용자의 관심 분야를 업데이트
 @app.route('/update_user_preference', methods=['POST'])
 def update_user_preferences_endpoint():
     data = request.get_json()
-    userID = data['userID']
+    userID = data['userId']
     user_preferences = data['preferences']
     update_user_preferences(userID, user_preferences)
     return jsonify({'message': '관심사 업데이트 됨. DB를 확인해주세요'})
 
+# 사용자 개인 분류기가 있는지 확인 
+@app.route('/check_personal_classifier', methods=['POST'])
+def check_personal_classfier_endpoint():
+    data = request.get_json()
+    userID = data['userId']
+
+    classifier_file = f'{userID}.pth'
+    if os.path.isfile(classifier_file):
+        return jsonify({"exists": True})
+    else:
+        return jsonify({"exists": False})
+    
+
 if __name__ == '__main__':
     
     app.run(host='0.0.0.0', port=5000)
+
