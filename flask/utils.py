@@ -46,7 +46,7 @@ def update_user_preferences(userId, new_preferences):
     new_label_mapping = {pref: idx for idx, pref in enumerate(new_preferences)}
 
     # 업데이트할 문서와 업데이트 내용 설정
-    query = {"userID": userId}
+    query = {"userId": userId}
     new_values = {
         "$set": {
             "preferences": new_preferences,
